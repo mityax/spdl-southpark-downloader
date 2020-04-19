@@ -32,6 +32,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -54,7 +55,7 @@ except ImportError:
             except ImportError:
                 raise ImportError(&#34;Couldn&#39;t import ElementTree from any known place - please install lxml for python 3&#34;)
 
-log = logging.getLogger(__name__)
+log = logging.getLogger(&#39;spdl&#39;)
 
 
 def set_tempdir(dir: Optional[str] = None) -&gt; str:
@@ -218,16 +219,17 @@ class Episode:
     def download(self, filename: Optional[str] = None, quality: str = &#39;max&#39;, ffmpeg_executable: Optional[str] = None, max_threads: int = 4):
         &#34;&#34;&#34;
         Downloads the episode to a file using a single thread. ffmpeg is required for this to work.
-        :param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with avi extension.
+        :param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with .mp4 extension.
         :param quality: The desired quality. Either &#39;max&#39;, &#39;medium&#39;, &#39;min&#39;, or a resolution like &#39;1920x1080&#39; (the closes matching resolution is taken in this case)
         :param ffmpeg_executable: The path to the ffmpeg executable, defaults to &#39;ffmpeg&#39; on unix and &#39;ffmpeg.exe&#39; on windows
         :param max_threads: The maximum number of downloads to perform concurrently.
         &#34;&#34;&#34;
 
         if filename is None:
-            filename = f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.avi&#39;
+
+            filename = f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.mp4&#39;
         elif os.path.isdir(filename):
-            filename = os.path.join(filename, f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.avi&#39;)
+            filename = os.path.join(filename, f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.mp4&#39;)
 
         if ffmpeg_executable is None:
             ffmpeg_executable = &#39;ffmpeg.exe&#39; if os.name == &#39;nt&#39; else &#39;ffmpeg&#39;
@@ -243,11 +245,26 @@ class Episode:
                 stream = vid.get_stream(quality=quality)
                 fn = os.path.join(tempdir, f&#34;{self.id}--{i}.ts&#34;)
                 fns.append(fn)
-                log.info(&#34;Downloading stream #%s of %s...&#34;, i, len(videos))
-                e.submit(lambda: os.popen(f&#39;{ffmpeg_executable} -i &#34;{stream.url}&#34; -codec copy \&#34;{fn}\&#34;&#39;).read())
+                log.info(&#34;Initiated download of stream #%s of %s...&#34;, i, len(videos))
+                e.submit(lambda: subprocess.Popen([ffmpeg_executable, &#39;-loglevel&#39;, &#39;warning&#39;, &#39;-y&#39;, &#39;-i&#39;, stream.url, &#39;-codec&#39;, &#39;copy&#39;, fn], stdin=subprocess.PIPE).wait())
 
         log.info(&#34;Merging downloaded streams...&#34;)
-        os.popen(f&#39;{ffmpeg_executable} -i &#34;concat:{&#34;|&#34;.join(fns)}&#34; -codec copy \&#34;{filename}\&#34;&#39;).read()
+        metadata = []
+        for k, v in {
+                        &#34;title&#34;: f&#34;{self.title} (S{self.season} E{self.episode_number_in_season})&#34;,
+                        &#34;description&#34;: self.description,
+                        &#34;comment&#34;: self.description,
+                        &#34;year&#34;: time.localtime(self.date).tm_year,
+                        &#34;track&#34;: self.episode_number_in_season,
+                        &#34;synopsis&#34;: self.short_description,
+                        &#34;show&#34;: &#34;South Park&#34;,
+                        &#34;episode_id&#34;: self.episode_number,
+                        &#34;album&#34;: self.season,
+                        &#34;author&#34;: &#34;The South Park Team&#34;
+                    }.items():
+            metadata.append(&#34;-metadata&#34;)
+            metadata.append(f&#39;{k}={escape_string(str(v))}&#39;)
+        subprocess.Popen([ffmpeg_executable, &#39;-loglevel&#39;, &#39;warning&#39;, &#39;-y&#39;,  &#39;-i&#39;, f&#39;concat:{&#34;|&#34;.join(fns)}&#39;] + metadata + [&#39;-c:v&#39;, &#39;copy&#39;, f&#39;{filename}&#39;]).wait()
 
         log.info(&#34;Cleaning up...&#34;)
         for f in fns:
@@ -441,6 +458,16 @@ def escape_filename(string: str) -&gt; str:
     return &#34;&#34;.join(x if (x.isalnum() or x in &#34;._- &#34;) else &#39;_&#39; for x in string)
 
 
+def escape_string(string: str) -&gt; str:
+    &#34;&#34;&#34;
+    Escapes a string so it can be passed via a command line argument
+    :param string:  Th estring to escape
+    :return: The escaped string
+    &#34;&#34;&#34;
+
+    return string.replace(&#39;&#34;&#39;, &#39;\&#34;&#39;).replace(&#34;\n&#34;, &#34;\\n&#34;).replace(&#34;\r&#34;, &#34;\\r&#34;)
+
+
 def parse_episode_string(string: str) -&gt; Tuple[int, int]:
     &#34;&#34;&#34;
     Parses a string like &#34;S04E12&#34; into a tuple like (4, 12). Leading zeros are optional. If
@@ -460,7 +487,7 @@ if __name__ == &#39;__main__&#39;:
     parser = argparse.ArgumentParser(os.path.basename(__file__), description=&#34;Download South Park Seasons or Episodes&#34;)
     parser.add_argument(&#39;what&#39;,
                         help=&#34;Specify what to download. Examples: &#39;all&#39;, &#39;S01&#39;, &#39;S01E02&#39;, &#39;S01-S07&#39;, &#39;S01,S02-S04,S05E01-S05E04&#39;&#34;)
-    parser.add_argument(&#39;-p&#39;, &#39;--path&#39;, default=&#39;South Park/Season %s/%e - %t.avi&#39;,
+    parser.add_argument(&#39;-p&#39;, &#39;--path&#39;, default=&#39;South Park/Season %s/%e - %t.mp4&#39;,
                         help=f&#34;Specify where to save downloaded episodes and how the files are called. Directories that do not exist are created automatically. &#39;%%s&#39; is replaced with the current season number, &#39;%%e&#39; with the current episode number, &#39;%%t&#39; with the episode&#39;s title and &#39;%%g&#39; with the global episode number (e.g. \&#34;1803\&#34;)&#34;)
     parser.add_argument(&#39;-l&#39;, &#39;--language&#39;, default=&#39;en&#39;,
                         help=f&#34;Set the language for the downloads. The default language is english (en). Supported languages are: {&#39;, &#39;.join(DOMAIN_URL.keys())}&#34;)
@@ -472,12 +499,17 @@ if __name__ == &#39;__main__&#39;:
                         help=&#34;Specify the maximum number of threads to download video parts concurrently. Default: 4&#34;)
     parser.add_argument(&#39;-f&#39;, &#39;--tempdir&#39;, default=tempdir,
                         help=&#34;Specify where to put temporary files. This option can be useful for example if you do not have enough space left on your harddrive and want to work on an external drive.&#34;)
+    parser.add_argument(&#39;-v&#39;, &#39;--verbose&#39;, action=&#39;store_true&#39;,
+                        help=&#34;Give a more verbose output of what is currently happening.&#34;)
 
     args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+
     s = SouthPark(args.language)
 
     print(&#34;Collecting episodes to download...&#34;)
-
     to_download = []
     if args.what == &#39;all&#39;:
         for season in s.get_all_seasons():
@@ -521,7 +553,7 @@ if __name__ == &#39;__main__&#39;:
         exit()
 
     if os.path.isdir(args.path):
-        args.path = os.path.join(args.path, &#39;Season %s/%e - %t.avi&#39;)
+        args.path = os.path.join(args.path, &#39;Season %s/%e - %t.mp4&#39;)
     if args.tempdir != tempdir:
         set_tempdir(args.tempdir)
 
@@ -574,6 +606,28 @@ are not supported by the filesystem.
     :return: The escaped string
     &#34;&#34;&#34;
     return &#34;&#34;.join(x if (x.isalnum() or x in &#34;._- &#34;) else &#39;_&#39; for x in string)</code></pre>
+</details>
+</dd>
+<dt id="spdl.escape_string"><code class="name flex">
+<span>def <span class="ident">escape_string</span></span>(<span>string: str) -> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Escapes a string so it can be passed via a command line argument
+:param string:
+Th estring to escape
+:return: The escaped string</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def escape_string(string: str) -&gt; str:
+    &#34;&#34;&#34;
+    Escapes a string so it can be passed via a command line argument
+    :param string:  Th estring to escape
+    :return: The escaped string
+    &#34;&#34;&#34;
+
+    return string.replace(&#39;&#34;&#39;, &#39;\&#34;&#39;).replace(&#34;\n&#34;, &#34;\\n&#34;).replace(&#34;\r&#34;, &#34;\\r&#34;)</code></pre>
 </details>
 </dd>
 <dt id="spdl.http_get"><code class="name flex">
@@ -699,16 +753,17 @@ only a season number is supplied ("S04"), the second element in the tuple is Non
     def download(self, filename: Optional[str] = None, quality: str = &#39;max&#39;, ffmpeg_executable: Optional[str] = None, max_threads: int = 4):
         &#34;&#34;&#34;
         Downloads the episode to a file using a single thread. ffmpeg is required for this to work.
-        :param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with avi extension.
+        :param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with .mp4 extension.
         :param quality: The desired quality. Either &#39;max&#39;, &#39;medium&#39;, &#39;min&#39;, or a resolution like &#39;1920x1080&#39; (the closes matching resolution is taken in this case)
         :param ffmpeg_executable: The path to the ffmpeg executable, defaults to &#39;ffmpeg&#39; on unix and &#39;ffmpeg.exe&#39; on windows
         :param max_threads: The maximum number of downloads to perform concurrently.
         &#34;&#34;&#34;
 
         if filename is None:
-            filename = f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.avi&#39;
+
+            filename = f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.mp4&#39;
         elif os.path.isdir(filename):
-            filename = os.path.join(filename, f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.avi&#39;)
+            filename = os.path.join(filename, f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.mp4&#39;)
 
         if ffmpeg_executable is None:
             ffmpeg_executable = &#39;ffmpeg.exe&#39; if os.name == &#39;nt&#39; else &#39;ffmpeg&#39;
@@ -724,11 +779,26 @@ only a season number is supplied ("S04"), the second element in the tuple is Non
                 stream = vid.get_stream(quality=quality)
                 fn = os.path.join(tempdir, f&#34;{self.id}--{i}.ts&#34;)
                 fns.append(fn)
-                log.info(&#34;Downloading stream #%s of %s...&#34;, i, len(videos))
-                e.submit(lambda: os.popen(f&#39;{ffmpeg_executable} -i &#34;{stream.url}&#34; -codec copy \&#34;{fn}\&#34;&#39;).read())
+                log.info(&#34;Initiated download of stream #%s of %s...&#34;, i, len(videos))
+                e.submit(lambda: subprocess.Popen([ffmpeg_executable, &#39;-loglevel&#39;, &#39;warning&#39;, &#39;-y&#39;, &#39;-i&#39;, stream.url, &#39;-codec&#39;, &#39;copy&#39;, fn], stdin=subprocess.PIPE).wait())
 
         log.info(&#34;Merging downloaded streams...&#34;)
-        os.popen(f&#39;{ffmpeg_executable} -i &#34;concat:{&#34;|&#34;.join(fns)}&#34; -codec copy \&#34;{filename}\&#34;&#39;).read()
+        metadata = []
+        for k, v in {
+                        &#34;title&#34;: f&#34;{self.title} (S{self.season} E{self.episode_number_in_season})&#34;,
+                        &#34;description&#34;: self.description,
+                        &#34;comment&#34;: self.description,
+                        &#34;year&#34;: time.localtime(self.date).tm_year,
+                        &#34;track&#34;: self.episode_number_in_season,
+                        &#34;synopsis&#34;: self.short_description,
+                        &#34;show&#34;: &#34;South Park&#34;,
+                        &#34;episode_id&#34;: self.episode_number,
+                        &#34;album&#34;: self.season,
+                        &#34;author&#34;: &#34;The South Park Team&#34;
+                    }.items():
+            metadata.append(&#34;-metadata&#34;)
+            metadata.append(f&#39;{k}={escape_string(str(v))}&#39;)
+        subprocess.Popen([ffmpeg_executable, &#39;-loglevel&#39;, &#39;warning&#39;, &#39;-y&#39;,  &#39;-i&#39;, f&#39;concat:{&#34;|&#34;.join(fns)}&#39;] + metadata + [&#39;-c:v&#39;, &#39;copy&#39;, f&#39;{filename}&#39;]).wait()
 
         log.info(&#34;Cleaning up...&#34;)
         for f in fns:
@@ -859,7 +929,7 @@ only a season number is supplied ("S04"), the second element in the tuple is Non
 </code></dt>
 <dd>
 <div class="desc"><p>Downloads the episode to a file using a single thread. ffmpeg is required for this to work.
-:param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with avi extension.
+:param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with .mp4 extension.
 :param quality: The desired quality. Either 'max', 'medium', 'min', or a resolution like '1920x1080' (the closes matching resolution is taken in this case)
 :param ffmpeg_executable: The path to the ffmpeg executable, defaults to 'ffmpeg' on unix and 'ffmpeg.exe' on windows
 :param max_threads: The maximum number of downloads to perform concurrently.</p></div>
@@ -870,16 +940,17 @@ only a season number is supplied ("S04"), the second element in the tuple is Non
 <pre><code class="python">def download(self, filename: Optional[str] = None, quality: str = &#39;max&#39;, ffmpeg_executable: Optional[str] = None, max_threads: int = 4):
     &#34;&#34;&#34;
     Downloads the episode to a file using a single thread. ffmpeg is required for this to work.
-    :param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with avi extension.
+    :param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with .mp4 extension.
     :param quality: The desired quality. Either &#39;max&#39;, &#39;medium&#39;, &#39;min&#39;, or a resolution like &#39;1920x1080&#39; (the closes matching resolution is taken in this case)
     :param ffmpeg_executable: The path to the ffmpeg executable, defaults to &#39;ffmpeg&#39; on unix and &#39;ffmpeg.exe&#39; on windows
     :param max_threads: The maximum number of downloads to perform concurrently.
     &#34;&#34;&#34;
 
     if filename is None:
-        filename = f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.avi&#39;
+
+        filename = f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.mp4&#39;
     elif os.path.isdir(filename):
-        filename = os.path.join(filename, f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.avi&#39;)
+        filename = os.path.join(filename, f&#39;S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.mp4&#39;)
 
     if ffmpeg_executable is None:
         ffmpeg_executable = &#39;ffmpeg.exe&#39; if os.name == &#39;nt&#39; else &#39;ffmpeg&#39;
@@ -895,11 +966,26 @@ only a season number is supplied ("S04"), the second element in the tuple is Non
             stream = vid.get_stream(quality=quality)
             fn = os.path.join(tempdir, f&#34;{self.id}--{i}.ts&#34;)
             fns.append(fn)
-            log.info(&#34;Downloading stream #%s of %s...&#34;, i, len(videos))
-            e.submit(lambda: os.popen(f&#39;{ffmpeg_executable} -i &#34;{stream.url}&#34; -codec copy \&#34;{fn}\&#34;&#39;).read())
+            log.info(&#34;Initiated download of stream #%s of %s...&#34;, i, len(videos))
+            e.submit(lambda: subprocess.Popen([ffmpeg_executable, &#39;-loglevel&#39;, &#39;warning&#39;, &#39;-y&#39;, &#39;-i&#39;, stream.url, &#39;-codec&#39;, &#39;copy&#39;, fn], stdin=subprocess.PIPE).wait())
 
     log.info(&#34;Merging downloaded streams...&#34;)
-    os.popen(f&#39;{ffmpeg_executable} -i &#34;concat:{&#34;|&#34;.join(fns)}&#34; -codec copy \&#34;{filename}\&#34;&#39;).read()
+    metadata = []
+    for k, v in {
+                    &#34;title&#34;: f&#34;{self.title} (S{self.season} E{self.episode_number_in_season})&#34;,
+                    &#34;description&#34;: self.description,
+                    &#34;comment&#34;: self.description,
+                    &#34;year&#34;: time.localtime(self.date).tm_year,
+                    &#34;track&#34;: self.episode_number_in_season,
+                    &#34;synopsis&#34;: self.short_description,
+                    &#34;show&#34;: &#34;South Park&#34;,
+                    &#34;episode_id&#34;: self.episode_number,
+                    &#34;album&#34;: self.season,
+                    &#34;author&#34;: &#34;The South Park Team&#34;
+                }.items():
+        metadata.append(&#34;-metadata&#34;)
+        metadata.append(f&#39;{k}={escape_string(str(v))}&#39;)
+    subprocess.Popen([ffmpeg_executable, &#39;-loglevel&#39;, &#39;warning&#39;, &#39;-y&#39;,  &#39;-i&#39;, f&#39;concat:{&#34;|&#34;.join(fns)}&#39;] + metadata + [&#39;-c:v&#39;, &#39;copy&#39;, f&#39;{filename}&#39;]).wait()
 
     log.info(&#34;Cleaning up...&#34;)
     for f in fns:
@@ -1371,6 +1457,7 @@ using the first element.</p></div>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="spdl.escape_filename" href="#spdl.escape_filename">escape_filename</a></code></li>
+<li><code><a title="spdl.escape_string" href="#spdl.escape_string">escape_string</a></code></li>
 <li><code><a title="spdl.http_get" href="#spdl.http_get">http_get</a></code></li>
 <li><code><a title="spdl.parse_episode_string" href="#spdl.parse_episode_string">parse_episode_string</a></code></li>
 <li><code><a title="spdl.set_tempdir" href="#spdl.set_tempdir">set_tempdir</a></code></li>
