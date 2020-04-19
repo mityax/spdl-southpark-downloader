@@ -7,7 +7,7 @@ On most ubuntu-like systems a simple
 
 ```sudo apt install ffmpeg```
 
-should be enough, if ffmpeg is not installed already. To install ffmpeg on other platforms, visit their (download site)[https://www.ffmpeg.org/download.html].
+should be enough, if ffmpeg is not installed already. To install ffmpeg on other platforms, visit their [download site](https://www.ffmpeg.org/download.html).
 If you use spdl.py as a python library and do not want to use the built-in download function, you don't event need ffmpeg.
 
 ## Command line usage
@@ -51,7 +51,7 @@ More options are:
 ## Use as python library
 To download all episodes in english use this self-explanatory code:
 
-```
+```python3
 import spdl
 
 southpark = spdl.SouthPark('en')
@@ -64,7 +64,7 @@ for season in southpark.get_all_seasons():
 
 The ```episode``` object contains all metadata of a south park episode:
 
-```
+```python3
 import spdl
 
 episode = spdl.SouthPark().get_season(20).episodes[0]
@@ -85,7 +85,7 @@ print(episode.lang)  # => en
 Each South Park episode consists of about 3-4 single video files. That's just how the South Park website works.
 To get these videos do this:
 
-```
+```python3
 import spdl
 
 episode = spdl.SouthPark().get_season(20).episodes[0]
@@ -94,19 +94,21 @@ videos = episode.get_videos()
 
 Each of the videos is available in multiple different qualities. To get all video stream urls, call
 
-```
+```python3
 streams = videos[0].get_streams()
 ```
 
 and to automatically select a single one use
 
-```
+```python3
 stream = videos[0].get_stream('max')  # possible stream selectors are 'max', 'medium', 'min' or a resolution string like '1280x720' to get the closes matching stream
 ```
 
 Then, you can easily retrieve the stream data:
 
-```
+```python3
 print(stream.resolution)  # => 1280x720
 print(stream.url)  # => https://dlvrsvc.mtvnservices.com/api/playlist/gsp.comedystor/com/sp/season-20/2001/acts/0/stream_1280x720_1197995.m3u8?tk=st=1587291688~exp=1587306088~acl=/api/playlist/gsp.comedystor/com/sp/season-20/2001/acts/0/stream_1280x720_1197995.m3u8*~hmac=5f9c3d1b0ae6f1d5e624a7539d8097876f19ceab7278bf972247803cfa14803a&account=southparkstudios.com&cdn=level3
 ```
+### Full API documentation
+The full API documentation can be found at https://mityax.github.io/spdl.py-southpark-downloader/index.html
