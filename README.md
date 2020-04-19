@@ -2,13 +2,9 @@
 Download full south park seasons and episodes. Provides a **command line interface** and can also be imported as a **python southpark library**. This script is designed to be as fast, as easy to use and as independent as possible.
 
 ## Requirements - What do I need?
-spdl.py is a Python 3 script. The only system requirement to download episodes is a working ffmpeg binary.
-On most ubuntu-like systems a simple
-
-```sudo apt install ffmpeg```
-
-should be enough, if ffmpeg is not installed already. To install ffmpeg on other platforms, visit their [download site](https://www.ffmpeg.org/download.html).
-If you use spdl.py as a python library and do not want to use the built-in download function, you don't event need ffmpeg.
+ * Python 3 – [How to install?](https://realpython.com/installing-python/)
+ * ffmpeg – [How to install?](https://mityax.github.io/spdl.py-southpark-downloader/install-ffmpeg.md)
+    ffmpeg is not required if you use spdl.py as a library and do not intend to use the built-in download function.
 
 ## Command line usage
 The simplest possible command line usage is:
