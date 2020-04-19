@@ -1,6 +1,6 @@
 # How to install ffmpeg
 
-You have to options to get ffmpeg working on your system. You can either [download a static build](#other) or you can properly install ffmpeg in your system to make it available for all programs. To do a full install, choose your platform here:
+You have two options to get ffmpeg working on your system. You can either [download a static build](#other) or you can properly install ffmpeg in your system to make it available for all programs. To do a full install, choose your platform here:
 
 * [Unix (Ubuntu, Linux Mint, Debian)](#unix)
 * [Mac OS X](#macosx)
