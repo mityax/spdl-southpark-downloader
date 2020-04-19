@@ -13,13 +13,20 @@ If you use spdl.py as a python library and do not want to use the built-in downl
 ## Command line usage
 The simplest possible command line usage is:
 
-```python3 /spdl.py all```
+```python3 spdl.py all```
 
-This will download all south park seasons in english language to the directory "./South Park"
+This will download all south park seasons in english language to the directory "./South Park".
 
-More options are:
+To download only some parts of the south park series use a command like this:
+
+```python3 spdl.py S01-S07,S08E2-S08E5,S10```
+
+This example will download the full seasons 1 to 7 (including season 7), episodes 2 to 5 from season 8 and the full season 10.
+
+More (optional) options are:
 
 ```
+  -h, --help            show this help message and exit
   -p PATH, --path PATH  Specify where to save downloaded episodes and how the
                         files are called. Directories that do not exist are
                         created automatically. '%s' is replaced with the
@@ -46,6 +53,8 @@ More options are:
                         be useful for example if you do not have enough space
                         left on your harddrive and want to work on an external
                         drive.
+  -v, --verbose         Give a more verbose output of what is currently
+                        happening.
 ```
 
 ## Use as python library
