@@ -26,7 +26,6 @@ This example will download the full seasons 1 to 7 (including season 7), episode
 More (optional) options are:
 
 ```
-  -h, --help            show this help message and exit
   -p PATH, --path PATH  Specify where to save downloaded episodes and how the
                         files are called. Directories that do not exist are
                         created automatically. '%s' is replaced with the
@@ -94,10 +93,11 @@ The ```Episode.download()``` method accepts multiple keyword arguments to custom
 
 ```python3
 episode.download(
-  # Specify where to save the downloaded episode. You may use any file extension supported by ffmpeg
-  # but .mp4 is suggested if you care about file meta data
+
+  # Specify where to save the downloaded episode. You may use any file extension
+  # supported by ffmpeg but .mp4 is suggested if you care about file meta data
   filename = './South Park/My Downloaded Episode.mp4',
-  
+
   # The quality of the downloads: 'max', 'medium', 'min' or something like '1920x1080'
   quality = 'max',
 )
