@@ -5,7 +5,7 @@ You have to options to get ffmpeg working on your system. You can either [downlo
 * [Unix (Ubuntu, Linux Mint, ...)](#unix)
 * [Mac OS X](#macosx)
 * [Windows](#windows)
-* [Other Platforms](#other)
+* [Other Platforms (Using Static Builds)](#other)
 
 However, if you use spdl.py as a python library and do not want to use the built-in download function, you don't event need ffmpeg and you may just skip the installation.
 
@@ -55,7 +55,7 @@ $ brew install ffmpeg
     ```
     Do not run setx if you have more than 1024 characters in your system PATH variable. See [this post](https://superuser.com/questions/387619/overcoming-the-1024-character-limit-with-setx) on SuperUser that discusses alternatives. Be sure to alter the command so that path\to reflects the folder path from your root to ffmpeg\bin.
 
-## Other Platforms <a name="other" />
+## Other Platforms (Using Static Builds) <a name="other" />
 To install ffmpeg on other platforms, visit their [download site](https://www.ffmpeg.org/download.html).
 You can download any ffmpeg binary from there that fits to your platform and save it anywhere on your computer. If it's not in your environment PATH just point spdl.py to the executeable by adding the ```--ffmpeg-binary``` option to the commandline like this:
 
