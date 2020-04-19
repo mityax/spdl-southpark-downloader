@@ -77,16 +77,16 @@ import spdl
 
 episode = spdl.SouthPark().get_season(20).episodes[0]
 
-print(episode.id)  # => 1e607994-e3bc-4608-8562-e0af707aecd8
-print(episode.title)  # => Member Berries
-print(episode.description)  # => In the season 20 premiere episode, the National Anthem gets a reboot by an American Icon. (South Park S20, E01 2)
-print(episode.short_description)  # => In the season 20 premiere episode, the National Anthem gets a reboot by an American Icon. (South Park S20, E01 2)
-print(episode.thumbnail)  # => https://southparkstudios.mtvnimages.com/south-park/assets/season-20/2001/episodethumbnails/southpark_2001_5333x3000.jpg
+print(episode.id)  # => "1e607994-e3bc-4608-8562-e0af707aecd8"
+print(episode.title)  # => "Member Berries"
+print(episode.description)  # => "In the season 20 premiere episode, the National Anthem gets a reboot by an American Icon. (South Park S20, E01 2)"
+print(episode.short_description)  # => "In the season 20 premiere episode, the National Anthem gets a reboot by an American Icon. (South Park S20, E01 2)"
+print(episode.thumbnail)  # => "https://southparkstudios.mtvnimages.com/south-park/assets/season-20/2001/episodethumbnails/southpark_2001_5333x3000.jpg"
 print(episode.date)  # => 1473904800 (unix timestamp; use the built-in python time module to work with this)
-print(episode.episode_number)  # => 2001
-print(episode.season)  # => 20
-print(episode.episode_number_in_season)  # => 01
-print(episode.lang)  # => en
+print(episode.episode_number)  # => "2001"
+print(episode.season)  # => "20"
+print(episode.episode_number_in_season)  # => "01"
+print(episode.lang)  # => "en"
 ```
 
 The ```Episode.download()``` method accepts multiple keyword arguments to customize downloading:
@@ -112,27 +112,30 @@ To get these videos do this:
 ```python3
 import spdl
 
-episode = spdl.SouthPark().get_season(20).episodes[0]
-videos = episode.get_videos()
+episode = spdl.SouthPark().get_season(20).episodes[0]  # => <Episode episodeId=1e607994-e3bc-4608-8562-e0af707aecd8 season=20 episode=01 title="Member Berries">
+
+videos = episode.get_videos() # => [<spdl.Video object at 0x7f07fed01438>, ...]
 ```
 
 Each of the videos is available in multiple different qualities. To get all video stream urls, call
 
 ```python3
-streams = videos[0].get_streams()
+streams = videos[0].get_streams()  # => [<Stream resolution=1280x720 url="...">, <Stream resolution=960x540 url="...">, ...]
 ```
 
 and to automatically select a single one use
 
 ```python3
-stream = videos[0].get_stream('max')  # possible stream selectors are 'max', 'medium', 'min' or a resolution string like '1280x720' to get the closes matching stream
+# possible stream selectors are 'max', 'medium', 'min' or a resolution string
+# like '1280x720' to get the closest matching stream
+stream = videos[0].get_stream('max')  # => <Stream resolution=1280x720 url="...">
 ```
 
 Then, you can easily retrieve the stream data:
 
 ```python3
-print(stream.resolution)  # => 1280x720
-print(stream.url)  # => https://dlvrsvc.mtvnservices.com/api/playlist/gsp.comedystor/com/sp/season-20/2001/acts/0/stream_1280x720_1197995.m3u8?tk=st=1587291688~exp=1587306088~acl=/api/playlist/gsp.comedystor/com/sp/season-20/2001/acts/0/stream_1280x720_1197995.m3u8*~hmac=5f9c3d1b0ae6f1d5e624a7539d8097876f19ceab7278bf972247803cfa14803a&account=southparkstudios.com&cdn=level3
+print(stream.resolution)  # => "1280x720"
+print(stream.url)  # => "https://dlvrsvc.mtvnservices.com/api/playlist/..."
 ```
 ### Full API documentation
 The full API documentation can be found [here](https://mityax.github.io/spdl.py-southpark-downloader/).
