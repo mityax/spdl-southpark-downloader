@@ -1,5 +1,5 @@
-# spdl.py - South Park Downloader And Python Module
-Download full south park seasons and episodes. Provides a command line interface and can also be imported as a python southpark library.
+# spdl.py - South Park downloader and Python library
+Download full south park seasons and episodes. Provides a command line interface and can also be imported as a python southpark library. This script is intended to be as fast, as easy to use and as independent as possible.
 
 ## Requirements - What do I need?
 spdl.py is a Python 3 script. The only system requirement to download episodes is a working ffmpeg binary.
