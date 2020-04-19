@@ -1,5 +1,5 @@
 # spdl.py
-Download full south park seasons and episodes. Provides a **command line interface** and can also be imported as a **python southpark library**. This script is designed to be as fast, as easy to use and as independent as possible.
+Download full south park seasons and episodes. Provides a **command line interface** and can also be imported as a **python southpark library**. This single-file script is designed to be as small, as fast, as easy to use and as independent as possible.
 
 ## Requirements - What do I need?
  * Python 3 – [How to install?](https://realpython.com/installing-python/)
