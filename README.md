@@ -1,4 +1,4 @@
-# spdl.py-southpark-downloader
+# spdl.py - South Park Downloader And Python Module
 Download full south park seasons and episodes. Provides a command line interface and can also be imported as a python southpark library.
 
 ## Requirements - What do I need?
