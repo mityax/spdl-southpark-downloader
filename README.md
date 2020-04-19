@@ -111,4 +111,4 @@ print(stream.resolution)  # => 1280x720
 print(stream.url)  # => https://dlvrsvc.mtvnservices.com/api/playlist/gsp.comedystor/com/sp/season-20/2001/acts/0/stream_1280x720_1197995.m3u8?tk=st=1587291688~exp=1587306088~acl=/api/playlist/gsp.comedystor/com/sp/season-20/2001/acts/0/stream_1280x720_1197995.m3u8*~hmac=5f9c3d1b0ae6f1d5e624a7539d8097876f19ceab7278bf972247803cfa14803a&account=southparkstudios.com&cdn=level3
 ```
 ### Full API documentation
-The full API documentation can be found at https://mityax.github.io/spdl.py-southpark-downloader/index.html
+The full API documentation can be found [here](https://mityax.github.io/spdl.py-southpark-downloader/index.html).
