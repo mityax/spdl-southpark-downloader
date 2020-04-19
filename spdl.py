@@ -6,13 +6,14 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
 import urllib.parse
 import urllib.request
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Any
 
 try:
     from lxml import etree
@@ -28,7 +29,7 @@ except ImportError:
             except ImportError:
                 raise ImportError("Couldn't import ElementTree from any known place - please install lxml for python 3")
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('spdl')
 
 
 def set_tempdir(dir: Optional[str] = None) -> str:
@@ -74,8 +75,10 @@ ALL_SEASONS_URL = {  # TODO: only the german address is currently valid; correct
 
 class Stream(object):
     def __init__(self, resolution: str, url: str):
-        self.url = url
-        self.resolution = resolution
+        self.url: str = url
+        """The url of the stream."""
+        self.resolution: str = resolution
+        """The resolution of the stream as a string in the format \"1920x1080\""""
 
     def __str__(self):
         return f"<{type(self).__name__} at {id(self)} resolution={self.resolution} url=\"{self.url}\">"
@@ -94,9 +97,11 @@ class Video:
     ]
 
     def __init__(self, streams: List[str], duration: List[int], captions: str):
-        self.streams = streams
-        self.duration = duration
-        self.captions = captions
+        self.__streams = streams
+        self.duration: List[int] = duration
+        """The duration of the video"""
+        self.captions: str = captions
+        """Sub-titles for the video"""
 
     def __rtmp_streams(self, index: int = 0) -> str:
         return self.RTMP_STREAMS[index]
@@ -130,7 +135,7 @@ class Video:
             return streams[-1]
         elif quality == 'medium':
             return streams[len(streams) // 2]
-        elif re.match("\d+x\d+$", quality):
+        elif re.match(r"\d+x\d+$", quality):
             q = int(quality.split("x")[0]) * int(quality.split("x")[0])
             streams = sorted(streams,
                              key=lambda s: abs(q - int(s.resolution.split("x")[0]) * int(s.resolution.split("x")[0])))
@@ -142,14 +147,14 @@ class Video:
     def get_play_data(self) -> Tuple[str, str]:
         ## High quality is the last stream  (-1)
         vqual = -1
-        rtmp = self.streams[vqual]
+        rtmp = self.__streams[vqual]
         playpath = ""
         if "http" not in rtmp:
-            if "viacomccstrm" in self.streams[vqual]:
-                playpath = "mp4:{0}".format(self.streams[vqual].split('viacomccstrm/')[1])
+            if "viacomccstrm" in self.__streams[vqual]:
+                playpath = "mp4:{0}".format(self.__streams[vqual].split('viacomccstrm/')[1])
                 rtmp = self.__rtmp_streams()
-            elif "cp9950.edgefcs.net" in self.streams[vqual]:
-                playpath = "mp4:{0}".format(self.streams[vqual].split('mtvnorigin/')[1])
+            elif "cp9950.edgefcs.net" in self.__streams[vqual]:
+                playpath = "mp4:{0}".format(self.__streams[vqual].split('mtvnorigin/')[1])
                 rtmp = self.__rtmp_streams()
         return playpath, rtmp
 
@@ -158,16 +163,26 @@ class Episode:
     def __init__(self, id: str, title: str, description: str, short_description: str, thumbnail: str, date: float,
                  episode_number: str, season: Optional[str] = None,
                  episode_number_in_season: Optional[str] = None, _lang: str = 'en'):
-        self.id = id
-        self.title = title
-        self.description = description
-        self.short_description = short_description
-        self.thumbnail = thumbnail
-        self.date = date
-        self.episode_number = episode_number
-        self.season = season
-        self.episode_number_in_season = episode_number_in_season
-        self.lang = _lang
+        self.id: str = id
+        """The south park intern uid of the episode"""
+        self.title: str = title
+        """The title of the episode"""
+        self.description: str = description
+        """The description of the episode"""
+        self.short_description: str = short_description
+        """A short description of the episode"""
+        self.thumbnail: str = thumbnail
+        """A URL to the thumbnail image of the episode"""
+        self.date: float = date
+        """The date of the episode as a unix timestamp"""
+        self.episode_number: str = episode_number
+        """The global episode number, e.g. "1908" or "2001\""""
+        self.season: str = season
+        """The number of the season the episode belongs to"""
+        self.episode_number_in_season: str = episode_number_in_season
+        """The episode number relative to it's season, e.g. "06\""""
+        self.lang: str = _lang
+        """The language of the episode, inherited from the SouthPark constructor"""
 
     def get_videos(self) -> List[Video]:
         """
@@ -178,16 +193,17 @@ class Episode:
     def download(self, filename: Optional[str] = None, quality: str = 'max', ffmpeg_executable: Optional[str] = None, max_threads: int = 4):
         """
         Downloads the episode to a file using a single thread. ffmpeg is required for this to work.
-        :param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with avi extension.
+        :param filename: The file to save the download to. If it points to an existing directory, a new file is created in that directory following a simple name scheme and with .mp4 extension.
         :param quality: The desired quality. Either 'max', 'medium', 'min', or a resolution like '1920x1080' (the closes matching resolution is taken in this case)
         :param ffmpeg_executable: The path to the ffmpeg executable, defaults to 'ffmpeg' on unix and 'ffmpeg.exe' on windows
         :param max_threads: The maximum number of downloads to perform concurrently.
         """
 
         if filename is None:
-            filename = f'S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.avi'
+
+            filename = f'S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.mp4'
         elif os.path.isdir(filename):
-            filename = os.path.join(filename, f'S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.avi')
+            filename = os.path.join(filename, f'S{self.season}E{self.episode_number_in_season} - {escape_filename(self.title)}.mp4')
 
         if ffmpeg_executable is None:
             ffmpeg_executable = 'ffmpeg.exe' if os.name == 'nt' else 'ffmpeg'
@@ -203,11 +219,26 @@ class Episode:
                 stream = vid.get_stream(quality=quality)
                 fn = os.path.join(tempdir, f"{self.id}--{i}.ts")
                 fns.append(fn)
-                log.info("Downloading stream #%s of %s...", i, len(videos))
-                e.submit(lambda: os.popen(f'{ffmpeg_executable} -i "{stream.url}" -codec copy \"{fn}\"').read())
+                log.info("Initiated download of stream #%s of %s...", i, len(videos))
+                e.submit(lambda: subprocess.Popen([ffmpeg_executable, '-loglevel', 'warning', '-y', '-i', stream.url, '-codec', 'copy', fn], stdin=subprocess.PIPE).wait())
 
         log.info("Merging downloaded streams...")
-        os.popen(f'{ffmpeg_executable} -i "concat:{"|".join(fns)}" -codec copy \"{filename}\"').read()
+        metadata = []
+        for k, v in {
+                        "title": f"{self.title} (S{self.season} E{self.episode_number_in_season})",
+                        "description": self.description,
+                        "comment": self.description,
+                        "year": time.localtime(self.date).tm_year,
+                        "track": self.episode_number_in_season,
+                        "synopsis": self.short_description,
+                        "show": "South Park",
+                        "episode_id": self.episode_number,
+                        "album": self.season,
+                        "author": "The South Park Team"
+                    }.items():
+            metadata.append("-metadata")
+            metadata.append(f'{k}={escape_string(str(v))}')
+        subprocess.Popen([ffmpeg_executable, '-loglevel', 'warning', '-y',  '-i', f'concat:{"|".join(fns)}'] + metadata + ['-c:v', 'copy', f'{filename}']).wait()
 
         log.info("Cleaning up...")
         for f in fns:
@@ -291,8 +322,10 @@ class Episode:
 
 class Season:
     def __init__(self, season_num: int, episodes: List[Episode]):
-        self.season_num = season_num
-        self.episodes = episodes
+        self.season_num: int = season_num
+        """The season number"""
+        self.episodes: List[Episode] = episodes
+        """A list of all episodes in the season"""
 
     def __str__(self):
         return f"<{type(self).__name__} at {id(self)} season={self.season_num} episodes={len(self.episodes)}>"
@@ -375,14 +408,18 @@ class SouthPark:
         return json.loads(http_get(url))
 
 
-def http_get(url: str) -> bytes:
+def http_get(url: str, default: Any = '') -> bytes:
     """
     Perform a simple HTTP GET request and return the response body as bytes.
     :param url: The url to fetch
+    :param default: A default value to return on network errors.
     :return: The response body, as bytes
     """
-    with urllib.request.urlopen(url) as resp:
-        return resp.read()
+    try:
+        with urllib.request.urlopen(url) as resp:
+            return resp.read()
+    except:
+        return default
 
 
 def escape_filename(string: str) -> str:
@@ -393,6 +430,16 @@ def escape_filename(string: str) -> str:
     :return: The escaped string
     """
     return "".join(x if (x.isalnum() or x in "._- ") else '_' for x in string)
+
+
+def escape_string(string: str) -> str:
+    """
+    Escapes a string so it can be passed via a command line argument
+    :param string:  Th estring to escape
+    :return: The escaped string
+    """
+
+    return string.replace('"', '\"').replace("\n", "\\n").replace("\r", "\\r")
 
 
 def parse_episode_string(string: str) -> Tuple[int, int]:
@@ -414,22 +461,29 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(os.path.basename(__file__), description="Download South Park Seasons or Episodes")
     parser.add_argument('what',
                         help="Specify what to download. Examples: 'all', 'S01', 'S01E02', 'S01-S07', 'S01,S02-S04,S05E01-S05E04'")
-    parser.add_argument('-p', '--path', default='South Park/Season %s/%e - %t.avi',
+    parser.add_argument('-p', '--path', default='South Park/Season %s/%e - %t.mp4',
                         help=f"Specify where to save downloaded episodes and how the files are called. Directories that do not exist are created automatically. '%%s' is replaced with the current season number, '%%e' with the current episode number, '%%t' with the episode's title and '%%g' with the global episode number (e.g. \"1803\")")
     parser.add_argument('-l', '--language', default='en',
                         help=f"Set the language for the downloads. The default language is english (en). Supported languages are: {', '.join(DOMAIN_URL.keys())}")
     parser.add_argument('-q', '--quality', default='max',
                         help="The video quality to use for downloads. Either 'max', 'medium', 'min' or a resolution string like '1920x1080' to use the closest matching resolution that is available. Default: max")
+    parser.add_argument('-b', "--ffmpeg-binary", default=None,
+                        help="Specify the path of the ffmpeg binary. Default on unix is 'ffmpeg', on windows it's 'ffmpeg.exe'")
     parser.add_argument('-t', '--threads', default=4, type=int,
                         help="Specify the maximum number of threads to download video parts concurrently. Default: 4")
     parser.add_argument('-f', '--tempdir', default=tempdir,
                         help="Specify where to put temporary files. This option can be useful for example if you do not have enough space left on your harddrive and want to work on an external drive.")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help="Give a more verbose output of what is currently happening.")
 
     args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+
     s = SouthPark(args.language)
 
     print("Collecting episodes to download...")
-
     to_download = []
     if args.what == 'all':
         for season in s.get_all_seasons():
@@ -473,7 +527,7 @@ if __name__ == '__main__':
         exit()
 
     if os.path.isdir(args.path):
-        args.path = os.path.join(args.path, 'Season %s/%e - %t.avi')
+        args.path = os.path.join(args.path, 'Season %s/%e - %t.mp4')
     if args.tempdir != tempdir:
         set_tempdir(args.tempdir)
 
@@ -485,7 +539,7 @@ if __name__ == '__main__':
         print(f"Downloading season {e.season} episode {e.episode_number_in_season} - {e.title}...")
         log.debug("Saving to: %s", path)
         try:
-            e.download(path, quality=args.quality, max_threads=args.threads)
+            e.download(path, quality=args.quality, ffmpeg_executable=args.ffmpeg_binary, max_threads=args.threads)
         except KeyboardInterrupt:
             time.sleep(0.5)
             if input(f"Press return to skip only this download (S{e.season} E{e.episode_number_in_season}) or enter 'exit' to cancel all remaining downloads.") in ('exit', 'e', 'all'):
