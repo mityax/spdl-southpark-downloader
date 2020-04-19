@@ -3,9 +3,8 @@ Download full south park seasons and episodes. Provides a **command line interfa
 
 ## Requirements - What do I need?
  * Python 3 – [How to install?](https://realpython.com/installing-python/)
- * ffmpeg – [How to install?](https://mityax.github.io/spdl.py-southpark-downloader/install-ffmpeg.md)
-    
-    ffmpeg is not required if you use spdl.py as a library and do not intend to use the built-in download function.
+ * ffmpeg – [How to install?](https://mityax.github.io/spdl.py-southpark-downloader/install-ffmpeg.html)<br>
+    &rarr; ffmpeg is not required if you use spdl.py as a library and do not intend to use the built-in download function.
 
 ## Command line usage
 The simplest possible command line usage is:
