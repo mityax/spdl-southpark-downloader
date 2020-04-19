@@ -36,7 +36,6 @@ $ sudo apt-get install ffmpeg
 ```
 
 ## Installation on Mac OS X <a name="macosx" />
-### Using Homebrew:
 The easiest way to install ffmpeg on Mac OS is using homebrew:
 
 ```
