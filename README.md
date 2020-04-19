@@ -90,6 +90,21 @@ print(episode.episode_number_in_season)  # => 01
 print(episode.lang)  # => en
 ```
 
+The ```Episode.download()``` method accepts multiple keyword arguments to customize downloading:
+
+```python3
+episode.download(
+  # Specify where to save the downloaded episode. You may use any file extension supported by ffmpeg
+  # but .mp4 is suggested if you care about file meta data
+  filename = './South Park/My Downloaded Episode.mp4',
+  
+  # The quality of the downloads: 'max', 'medium', 'min' or something like '1920x1080'
+  quality = 'max',
+)
+```
+
+There are more options available, take a look at the [documentation](https://mityax.github.io/spdl.py-southpark-downloader/#spdl.Episode.download) for more information.
+
 ### Advanced usage: video stream handling
 Each South Park episode consists of about 3-4 single video files. That's just how the South Park website works.
 To get these videos do this:
