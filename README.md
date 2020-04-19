@@ -100,6 +100,7 @@ episode.download(
 
   # The quality of the downloads: 'max', 'medium', 'min' or something like '1920x1080'
   quality = 'max',
+
 )
 ```
 
