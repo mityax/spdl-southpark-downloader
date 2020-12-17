@@ -100,7 +100,7 @@ episode.download(
 )
 ```
 
-There are more options available, take a look at the [documentation](https://mityax.github.io/spdl.py-southpark-downloader/#spdl.Episode.download) for more information.
+There are more options available, take a look at the [documentation](https://mityax.github.io/spdl-southpark-downloader/) for more information.
 
 ### Advanced usage: video stream handling
 Each South Park episode consists of about 3-4 single video files. That's just how the South Park website works.
@@ -135,4 +135,4 @@ print(stream.resolution)  # => "1280x720"
 print(stream.url)  # => "https://dlvrsvc.mtvnservices.com/api/playlist/..."
 ```
 ### Full API documentation
-The full API documentation can be found [here](https://mityax.github.io/spdl.py-southpark-downloader/).
+The full API documentation can be found [here](https://mityax.github.io/spdl-southpark-downloader/).
